@@ -11,12 +11,12 @@ df['Inicio_de_Conexión_Dia'] = df['Inicio_de_Conexión_Dia'].str.extract(r'(\d{
 df['FIN_de_Conexión_Dia'] = df['FIN_de_Conexión_Dia'].str.extract(r'(\d{4}-\d{2}-\d{2})')
 
 # Combinar fecha y hora en columnas datetime reales
-df['Inicio_de_Conexión'] = pd.to_datetime(df['Inicio_de_Conexión_Dia'] + ' ' + df['Inicio_de_Conexión_Hora'])
-df['FIN_de_Conexión'] = pd.to_datetime(df['FIN_de_Conexión_Dia'] + ' ' + df['FIN_de_Conexión_Hora'])
+df['Inicio_de_Conexión'] = pd.to_datetime(df['Inicio_de_Conexión_Dia'])# + ' ' + df['Inicio_de_Conexión_Hora'])
+df['FIN_de_Conexión'] = pd.to_datetime(df['FIN_de_Conexión_Dia']) #+ ' ' + df['FIN_de_Conexión_Hora'])
 
 
 #usuarios=df['Usuario'].tolist()
-expresion_hora=re.compile(r"^([0-1][0-9]|[2][0-3])\:[0-5][0-9]\:[0-5][0-9]$") #19:46:08 |2[0-3]
+#expresion_hora=re.compile(r"^([0-1][0-9]|[2][0-3])\:[0-5][0-9]\:[0-5][0-9]$") #19:46:08 |2[0-3]
 expresion_fecha=re.compile(r"^((2019|202[0-3])\-(0[1-9]|1[0-2])\-(0[1-9]|1[0-9]|2[0-9]|3[0-1]))$") ### 
 
 
@@ -32,12 +32,15 @@ def main():
 
 def solicitar_fecha_hora(mensaje):
     while True:
-        entrada = input(f"{mensaje} (YYYY-MM-DD HH:MM:SS): ").strip()
+        #entrada = input(f"{mensaje} (YYYY-MM-DD HH:MM:SS): ").strip()
+        entrada = input(f"{mensaje} (YYYY-MM-DD): ").strip()
         try:
-            fecha_str, hora_str = entrada.split()
+            #fecha_str, hora_str = entrada.split()
+            fecha_str = entrada
+
             check_regular(fecha_str, expresion_fecha)
-            check_regular(hora_str, expresion_hora)
-            return datetime.strptime(entrada, "%Y-%m-%d %H:%M:%S")
+           # check_regular(hora_str, expresion_hora)
+            return datetime.strptime(entrada, "%Y-%m-%d") #%H:%M:%S")
         except (ValueError, IndexError):
             print("Formato inválido. Intenta nuevamente con el formato correcto.")
 
@@ -54,18 +57,23 @@ def iterate_over_days(start_date, end_date):
 
 
 def get_users(diference_between_dates):
-    encontrados = 0
     resultados=[]
+    usuarios_por_mac=[]
     for index, row in df.iterrows(): #index es el numero de la fila y row el contenido
         if row['Usuario'] == "invitado-deca" and (
             row['Inicio_de_Conexión_Dia'] in diference_between_dates or 
             row['FIN_de_Conexión_Dia'] in diference_between_dates):
-            encontrados += 1
             #esto exportarlo al excel
-            resultados.append({'Usuario':[row['Usuario']],
-                     'Session_Time':[row['Session_Time']],
-                     'Input_Octects':[row['Input_Octects']],
-                     'Output_Octects':[row['Output_Octects']]})
+            resultados.append({'Usuario':row['Usuario'],
+                     'Session_Time':row['Session_Time'],
+                     'Input_Octects':row['Input_Octects'],
+                     'Output_Octects':row['Output_Octects']})
+        if row['Usuario'] == "invitado-deca" and (
+            row['Inicio_de_Conexión_Dia'] in diference_between_dates or 
+            row['FIN_de_Conexión_Dia'] in diference_between_dates) and row['MAC_Cliente'] not in usuarios_por_mac:
+            usuarios_por_mac.append(row['MAC_Cliente'])
+
+    print("Usuarios invitados conectados en el rango de fechas: ", len(usuarios_por_mac))
     return resultados
     
 def to_excel(dataset):
