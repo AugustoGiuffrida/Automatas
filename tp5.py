@@ -4,10 +4,42 @@ import pandas as pd
 import re
 from datetime import datetime,timedelta,date
 df=pd.read_csv("file.csv")
+
+
+# Eliminar cualquier contenido no válido antes de la fecha
+df['Inicio_de_Conexión_Dia'] = df['Inicio_de_Conexión_Dia'].str.extract(r'(\d{4}-\d{2}-\d{2})')
+df['FIN_de_Conexión_Dia'] = df['FIN_de_Conexión_Dia'].str.extract(r'(\d{4}-\d{2}-\d{2})')
+
+# Combinar fecha y hora en columnas datetime reales
+df['Inicio_de_Conexión'] = pd.to_datetime(df['Inicio_de_Conexión_Dia'] + ' ' + df['Inicio_de_Conexión_Hora'])
+df['FIN_de_Conexión'] = pd.to_datetime(df['FIN_de_Conexión_Dia'] + ' ' + df['FIN_de_Conexión_Hora'])
+
+
 #usuarios=df['Usuario'].tolist()
 expresion_hora=re.compile(r"^([0-1][0-9]|[2][0-3])\:[0-5][0-9]\:[0-5][0-9]$") #19:46:08 |2[0-3]
 expresion_fecha=re.compile(r"^((2019|202[0-3])\-(0[1-9]|1[0-2])\-(0[1-9]|1[0-9]|2[0-9]|3[0-1]))$") ### 
 
+
+def main():
+    print("Ingrese el rango de fechas y horas para la búsqueda de usuarios 'invitados'.")
+    
+    fecha_inicio = solicitar_fecha_hora("Fecha y hora inicial")
+    fecha_fin = solicitar_fecha_hora("Fecha y hora final")
+
+    fechas_en_rango = iterate_over_days(fecha_inicio.date(), fecha_fin.date())
+    get_users(fechas_en_rango)
+
+
+def solicitar_fecha_hora(mensaje):
+    while True:
+        entrada = input(f"{mensaje} (YYYY-MM-DD HH:MM:SS): ").strip()
+        try:
+            fecha_str, hora_str = entrada.split()
+            check_regular(fecha_str, expresion_fecha)
+            check_regular(hora_str, expresion_hora)
+            return datetime.strptime(entrada, "%Y-%m-%d %H:%M:%S")
+        except (ValueError, IndexError):
+            print("Formato inválido. Intenta nuevamente con el formato correcto.")
 
 
 def iterate_over_days(start_date, end_date):
@@ -20,6 +52,7 @@ def iterate_over_days(start_date, end_date):
         start_date += delta
     return diference_between_dates
 
+
 def get_users(diference_between_dates):
     encontrados = 0
     for index, row in df.iterrows(): #index es el numero de la fila y row el contenido
@@ -30,38 +63,21 @@ def get_users(diference_between_dates):
             print(f"- Usuario {row['Usuario']} conectado {row['Session_Time']} seg con {row['Input_Octects']} entrada y {row['Output_Octects']} salida")
     print(f"\nTotal de conexiones encontradas: {encontrados}")
     
+
 def check_regular(string,expresion):
     if expresion.search(string):
         return True
     else:
-        raise ValueError("Rango de fecha inválido. Por favor, usa de 2019 a 2023.") 
-
+        raise ValueError
 
 
 if __name__=="__main__":
-    try:
-        print("Ingrese un rango de fechas")
+    #print(df.columns)
+    #print(df.dtypes)
 
-        initial_date = input("Fecha y hora (YYYY-MM-DD HH:MM:SS): ").strip()
+    main()
         
-        final_date = input("Fecha y hora (YYYY-MM-DD HH:MM:SS): ").strip()
-
-        parsed_initial_date = datetime.strptime(initial_date, "%Y-%m-%d %H:%M:%S")
-        parsed_final_date = datetime.strptime(final_date, "%Y-%m-%d %H:%M:%S")
-        date=[parsed_initial_date.strftime("%Y-%m-%d"),parsed_final_date.strftime("%Y-%m-%d")]
-        hora=[parsed_initial_date.strftime("%H:%M:%S"),parsed_final_date.strftime("%H:%M:%S")]
-        
-        for fecha in date:
-            check_regular(fecha,expresion_fecha)
-        for hora in hora:
-            check_regular(hora,expresion_hora)
-        diference_between_dates=iterate_over_days(datetime.strptime(date[0], "%Y-%m-%d").date(),datetime.strptime(date[1], "%Y-%m-%d").date())  
-        get_users(diference_between_dates)  
-    except ValueError as e:
-        print("Error:", e)
-        exit()
-        
-        #2021-11-14 19:46:08
-        #2021-11-15 20:46:08
+    #2019-01-02 08:56:28
+    #2019-01-02 09:17:18
         
 
