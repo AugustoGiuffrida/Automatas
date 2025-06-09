@@ -27,8 +27,8 @@ def main():
     fecha_fin = solicitar_fecha_hora("Fecha y hora final")
 
     fechas_en_rango = iterate_over_days(fecha_inicio.date(), fecha_fin.date())
-    get_users(fechas_en_rango)
-
+    dataset=get_users(fechas_en_rango)
+    to_excel(dataset)
 
 def solicitar_fecha_hora(mensaje):
     while True:
@@ -55,15 +55,23 @@ def iterate_over_days(start_date, end_date):
 
 def get_users(diference_between_dates):
     encontrados = 0
+    resultados=[]
     for index, row in df.iterrows(): #index es el numero de la fila y row el contenido
         if row['Usuario'] == "invitado-deca" and (
             row['Inicio_de_Conexión_Dia'] in diference_between_dates or 
             row['FIN_de_Conexión_Dia'] in diference_between_dates):
             encontrados += 1
-            print(f"- Usuario {row['Usuario']} conectado {row['Session_Time']} seg con {row['Input_Octects']} entrada y {row['Output_Octects']} salida")
-    print(f"\nTotal de conexiones encontradas: {encontrados}")
+            #esto exportarlo al excel
+            resultados.append({'Usuario':[row['Usuario']],
+                     'Session_Time':[row['Session_Time']],
+                     'Input_Octects':[row['Input_Octects']],
+                     'Output_Octects':[row['Output_Octects']]})
+    return resultados
     
-
+def to_excel(dataset):
+    df=pd.DataFrame(dataset)
+    with pd.ExcelWriter('resultados.xlsx') as writer:
+        df.to_excel(writer, sheet_name='Resultados')
 def check_regular(string,expresion):
     if expresion.search(string):
         return True
@@ -76,8 +84,6 @@ if __name__=="__main__":
     #print(df.dtypes)
 
     main()
-        
     #2019-01-02 08:56:28
     #2019-01-02 09:17:18
         
-
