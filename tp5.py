@@ -18,29 +18,35 @@ df['FIN_de_Conexión'] = pd.to_datetime(df['FIN_de_Conexión_Dia']) #+ ' ' + df[
 #usuarios=df['Usuario'].tolist()
 #expresion_hora=re.compile(r"^([0-1][0-9]|[2][0-3])\:[0-5][0-9]\:[0-5][0-9]$") #19:46:08 |2[0-3]
 expresion_fecha=re.compile(r"^((2019|202[0-3])\-(0[1-9]|1[0-2])\-(0[1-9]|1[0-9]|2[0-9]|3[0-1]))$") ### 
-
+expresion_id=re.compile(r"^([0-9]{1,7})$")
+expresion_octets=re.compile(r"^[0-9]*$")
 
 def main():
     print("Ingrese el rango de fechas y horas para la búsqueda de usuarios 'invitados'.")
-    
-    fecha_inicio = solicitar_fecha_hora("Fecha y hora inicial")
-    fecha_fin = solicitar_fecha_hora("Fecha y hora final")
+    while True:
+        
+        
+        fecha_inicio = solicitar_fecha_hora("Fecha y hora inicial")
+        fecha_fin = solicitar_fecha_hora("Fecha y hora final")
 
-    fechas_en_rango = iterate_over_days(fecha_inicio.date(), fecha_fin.date())
-    dataset=get_users(fechas_en_rango)
-    to_excel(dataset)
+        fechas_en_rango = iterate_over_days(fecha_inicio.date(), fecha_fin.date())
+        nombre_archivo=input("Ingrese el nombre del archivo de salida: ")
+
+        dataset=get_users(fechas_en_rango)
+        to_excel(dataset,nombre_archivo) 
+        continuar=input("¿Desea continuar?(s/n)")
+        if continuar.lower()=="n":
+            break
+    
 
 def solicitar_fecha_hora(mensaje):
     while True:
-        #entrada = input(f"{mensaje} (YYYY-MM-DD HH:MM:SS): ").strip()
         entrada = input(f"{mensaje} (YYYY-MM-DD): ").strip()
         try:
-            #fecha_str, hora_str = entrada.split()
             fecha_str = entrada
 
             check_regular(fecha_str, expresion_fecha)
-           # check_regular(hora_str, expresion_hora)
-            return datetime.strptime(entrada, "%Y-%m-%d") #%H:%M:%S")
+            return datetime.strptime(entrada, "%Y-%m-%d")
         except (ValueError, IndexError):
             print("Formato inválido. Intenta nuevamente con el formato correcto.")
 
@@ -59,13 +65,14 @@ def iterate_over_days(start_date, end_date):
 def get_users(diference_between_dates):
     resultados_mac={}
     for index, row in df.iterrows(): #index es el numero de la fila y row el contenido
-        if row['Usuario'] == "invitado-deca" and (
-            row['Inicio_de_Conexión_Dia'] in diference_between_dates or 
-            row['FIN_de_Conexión_Dia'] in diference_between_dates):
+        if row['Usuario'] == "invitado-deca" and (row['Inicio_de_Conexión_Dia'] in diference_between_dates or row['FIN_de_Conexión_Dia'] in diference_between_dates):
             mac=row['MAC_Cliente']
-
+            if not expresion_id.search(row['ID']):
+                row['ID']=0
+            if not expresion_octets.search(row['Input_Octects']):
+                row['Input_Octects']=0
             if mac not in resultados_mac:
-                resultados_mac[mac]={'Usuario':row['Usuario'],
+                resultados_mac[mac]={'Id_usuario':row['ID'],'Usuario':row['Usuario'],
                      'Session_Time':int(row['Session_Time']),
                      'Input_Octects':int(row['Input_Octects']),
                      'Output_Octects':int(row['Output_Octects'])}
@@ -76,11 +83,17 @@ def get_users(diference_between_dates):
     print("Usuarios invitados conectados en el rango de fechas: ", len(resultados_mac))
     return resultados_mac
     
-def to_excel(dataset):
+def to_excel(dataset,nombre_archivo):
     df = pd.DataFrame.from_dict(dataset, orient='index')
     df.index.name = 'MAC_Cliente'
     df.reset_index(inplace=True)
-    with pd.ExcelWriter('resultados.xlsx') as writer:
+
+    # Convertimos los segundos a string con formato HH:MM:SS
+    df['Session_Time'] = df['Session_Time'].apply(
+        lambda x: str(timedelta(seconds=x))
+    )
+
+    with pd.ExcelWriter(f'{nombre_archivo}.xlsx') as writer:
         df.to_excel(writer, sheet_name='Resultados', index=False)
 
 def check_regular(string,expresion):
@@ -91,10 +104,6 @@ def check_regular(string,expresion):
 
 
 if __name__=="__main__":
-    #print(df.columns)
-    #print(df.dtypes)
 
     main()
-    #2019-01-02 08:56:28
-    #2019-01-02 09:17:18
-        
+    #2019-01-02         
