@@ -67,9 +67,9 @@ def get_users(diference_between_dates):
     for index, row in df.iterrows(): #index es el numero de la fila y row el contenido
         if row['Usuario'] == "invitado-deca" and (row['Inicio_de_Conexión_Dia'] in diference_between_dates or row['FIN_de_Conexión_Dia'] in diference_between_dates):
             mac=row['MAC_Cliente']
-            if not expresion_id.search(row['ID']):
+            if not check_regular(row['ID_Sesion'],expresion_id):
                 row['ID']=0
-            if not expresion_octets.search(row['Input_Octects']):
+            if not check_regular(row['Input_Octects'],expresion_octets):
                 row['Input_Octects']=0
             if mac not in resultados_mac:
                 resultados_mac[mac]={'Id_usuario':row['ID'],'Usuario':row['Usuario'],
