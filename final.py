@@ -37,22 +37,12 @@ def validar_mac_cliente(mac) -> bool:
 def obtener_razones_rechazo(fila, fechas_rango):
     """
     Analiza un registro y retorna las razones por las que fue rechazado.
-    Esta función es extensible - se pueden agregar nuevas validaciones fácilmente.
     """
     razones = []
     
     # Validar que el usuario sea 'invitado-deca'
     if fila['Usuario'] != "invitado-deca":
         razones.append("Usuario no es 'invitado-deca'")
-    
-    # Validar que AMBAS fechas estén en el rango especificado
-    fecha_inicio = fila['Inicio_de_Conexión_Dia']
-    fecha_fin = fila['FIN_de_Conexión_Dia']
-    
-    # Si alguna fecha está fuera del rango, rechazar el registro
-    if (not pd.isna(fecha_inicio) and fecha_inicio not in fechas_rango) or \
-       (not pd.isna(fecha_fin) and fecha_fin not in fechas_rango):
-        razones.append(f"Fechas fuera del rango especificado (Inicio: {fecha_inicio}, Fin: {fecha_fin})")
     
     # Validar MAC Cliente
     if not validar_mac_cliente(fila['MAC_Cliente']):
@@ -76,21 +66,13 @@ def obtener_razones_rechazo(fila, fechas_rango):
     
     return razones
 
-def es_registro_valido(fila, fechas_rango):
-    """
-    Determina si un registro es válido para procesamiento.
-    Retorna True si el registro es válido, False si debe ser rechazado.
-    """
-    razones = obtener_razones_rechazo(fila, fechas_rango)
-    return len(razones) == 0
-
 # =================== CARGA Y LIMPIEZA DE DATOS ===================
 
 def cargar_y_preprocesar_csv(ruta: str) -> pd.DataFrame:
     """Carga y preprocesa el archivo CSV con los datos de conexiones"""
     df = pd.read_csv(ruta, low_memory=False)
 
-    # Extraer solo las fechas en formato YYYY-MM-DD
+    # Extraer solo las fechas en formato YYYY-MM-DD, accesor de Pandas 
     df['Inicio_de_Conexión_Dia'] = df['Inicio_de_Conexión_Dia'].str.extract(r'(\d{4}-\d{2}-\d{2})')
     df['FIN_de_Conexión_Dia'] = df['FIN_de_Conexión_Dia'].str.extract(r'(\d{4}-\d{2}-\d{2})')
 
@@ -144,7 +126,7 @@ def procesar_registros_en_rango(df: pd.DataFrame, fechas_rango: list[str]):
         
         # Si ninguna fecha está en el rango, saltar este registro completamente
         # (no es relevante para el análisis del período)
-        if not fecha_inicio_en_rango and not fecha_fin_en_rango:
+        if not fecha_inicio_en_rango or not fecha_fin_en_rango:
             continue
         
         # Obtener razones de rechazo para este registro
@@ -227,11 +209,14 @@ def exportar_usuarios_validos(usuarios_validos: dict, writer):
         df_validados.reset_index(inplace=True)
         
         # Convertir Session_Time a formato legible (HH:MM:SS)
-        df_validados['Session_Time'] = df_validados['Session_Time'].apply(
-            lambda x: str(timedelta(seconds=x))
-        )
+        df_validados['Session_Time'] = df_validados['Session_Time'].apply(convertir_a_horas)
         
         df_validados.to_excel(writer, sheet_name='Datos_Validados', index=False)
+
+def convertir_a_horas(segundos):
+    """Convierte una cantidad de segundos a formato HH:MM:SS"""
+    return str(timedelta(seconds=segundos))
+
 
 def exportar_registros_rechazados(registros_rechazados: list, writer):
     """Exporta los registros rechazados a la hoja 'Datos_Rechazados'"""
@@ -294,4 +279,4 @@ def main():
     ejecutar_ciclo_analisis(df)
 
 if __name__ == "__main__":
-    main()
+    main() #2019-01-02 
